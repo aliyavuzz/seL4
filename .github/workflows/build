@@ -1,0 +1,38 @@
+name: seL4 Build
+on: [push, workflow_dispatch] # Her pushta manuel
+
+jobs:
+  build-sel4:
+    runs-on: ubuntu-latest
+    container:
+      image: trustworthysystems/sel4 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Sync and Build
+        run: |
+          # repo aracı
+          curl https://storage.googleapis.com/git-repo-downloads/repo > /usr/bin/repo
+          chmod a+x /usr/bin/repo
+          
+          # latest
+          mkdir build_dir && cd build_dir
+          repo init -u https://github.com/seL4/sel4test-manifest.git
+          repo sync
+          
+          # build
+          mkdir build && cd build
+          ../init-build.sh -DPLATFORM=pc99 -DAARCH64=0 -DRELEASE=0
+          
+          # VGA konsolu aktif etme 
+          echo "CONFIG_PRINTING=y" >> .config
+          echo "CONFIG_IOMMU=y" >> .config 
+          
+          ninja
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: sel4-image
+          path: build_dir/build/images/sel4test-driver-image-x86_64-pc99
